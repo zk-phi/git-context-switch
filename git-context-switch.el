@@ -141,7 +141,8 @@
          (rename-ref! (concat to-prefix "heads") "refs/heads")
          (when (file-exists-p (concat ".git/" to-prefix "stash"))
            (rename-ref! (concat to-prefix "stash") "refs/stash"))
-         (trash-directory-recursively! (concat "./.git/" to-prefix)))
+         (trash-directory-recursively! (concat "./.git/" to-prefix))
+         (trash-directory-recursively! (concat "./.git/logs/" to-prefix)))
        (setq active-context context-name)
        (message "Context switched to %s." context-name))
       (t
