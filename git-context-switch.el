@@ -2,6 +2,8 @@
 
 (require 'cl)
 
+(defconst DEBUG nil)
+
 (cd (or (locate-dominating-file "." ".git") (error "Not under a git repo.")))
 
 (defvar active-context
@@ -34,13 +36,27 @@
 
 (defun maybe-make-directory! (dir)
   (unless (file-exists-p dir)
+    (when DEBUG (message "DEBUG: Creating directory %s." dir))
     (make-directory dir t)))
 
 (defun trash-directory-recursively! (dir)
+  (when DEBUG (message "DEBUG: Deleting directory %s." dir))
   (delete-directory dir t t))
 
 (defun write-file-silently! (file)
-  (write-region (point-min) (point-max) file nil 'nomsg))
+  (write-region (point-min) (point-max) file nil (unless DEBUG 'nomsg)))
+
+(defun rename-file! (from to)
+  (when DEBUG (message "DEBUG: Renaming file %s to %s." from to))
+  (rename-file from to))
+
+(defun copy-file-or-directory! (from to)
+  (cond ((file-directory-p from)
+         (when DEBUG (message "DEBUG: Copying directory %s to %s." from to))
+         (copy-directory from to))
+        (t
+         (when DEBUG (message "DEBUG: Copying file %s to %s." from to))
+         (copy-file from to))))
 
 (defun rename-ref! (from to &optional copy)
   (let ((case-fold-search nil)
@@ -54,14 +70,11 @@
       (maybe-make-directory! (file-name-directory to-ref))
       (maybe-make-directory! (file-name-directory to-log))
       (cond ((not copy)
-             (rename-file from-ref to-ref)
-             (rename-file from-log to-log))
-            ((file-directory-p from-ref)
-             (copy-directory from-ref to-ref)
-             (copy-directory from-log to-log))
+             (rename-file! from-ref to-ref)
+             (rename-file! from-log to-log))
             (t
-             (copy-file from-ref to-ref)
-             (copy-file from-log to-log))))
+             (copy-file-or-directory! from-ref to-ref)
+             (copy-file-or-directory! from-log to-log))))
     (when (file-exists-p "./.git/packed-refs")
       (with-temp-buffer
         (insert-file-contents "./.git/packed-refs")
@@ -71,9 +84,11 @@
             (let ((oldstr (match-string 0))
                   (newstr (concat (match-string 1) to (match-string 2))))
               (cond (copy
+                     (when DEBUG (message "DEBUG: Copying packed-ref %s to %s." oldstr newstr))
                      (end-of-line)
                      (insert "\n" newstr))
                     (t
+                     (when DEBUG (message "DEBUG: Replacing packed-ref %s with %s." oldstr newstr))
                      (replace-match newstr t t)))
               (setq found t))))
         (write-file-silently! "./.git/packed-refs")))
