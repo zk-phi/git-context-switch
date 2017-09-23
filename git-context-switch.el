@@ -95,6 +95,14 @@
     (unless found
       (error "Internal error: ref %s not found." from))))
 
+(defun parse-symbolic-ref (ref)
+  "Returns (REF . DETACHED_P) of symbolic ref REF."
+  (with-temp-buffer
+    (insert-file-contents (concat "./.git/" ref))
+    (if (search-forward-regexp "^ref: refs/\\(.*\\)$" nil t)
+        (cons (match-string 1) nil)
+      (cons (buffer-substring (point-at-bol) (point-at-eol)) t))))
+
 ;; ----
 
 (defvar command (pop command-line-args-left))
@@ -109,13 +117,12 @@
       ((string= command "create")
        (when (context-exists-p context-name)
          (error "Context %s already exists." context-name))
-       (let ((context-prefix (context-prefix context-name))
-             (head-ref (with-temp-buffer
-                         (insert-file-contents "./.git/HEAD")
-                         (when (search-forward-regexp "^ref: refs/\\(heads/.*\\)$" nil t)
-                           (match-string 1)))))
+       (let* ((context-prefix (context-prefix context-name))
+              (head-ref (parse-symbolic-ref "HEAD"))
+              (detatched-p (cdr head-ref))
+              (head-ref (car head-ref)))
          (rename-ref! "HEAD" (concat context-prefix "HEAD") t)
-         (when head-ref
+         (unless detatched-p
            (rename-ref! (concat "refs/" head-ref) (concat context-prefix head-ref) t)))
        (message "Context %s created." context-name))
       ((string= command "delete")
