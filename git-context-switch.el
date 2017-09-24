@@ -116,6 +116,18 @@
         (cons (match-string 1) nil)
       (cons (buffer-substring (point-at-bol) (point-at-eol)) t))))
 
+(defun shell-command-to-string-noerror (command)
+  "Execute command COMMAND and returns the output as a string, if
+the command exits with 0. Otherwise dump the output and raises an
+error."
+  (when DEBUG (message "Executing `%s`." command))
+  (with-temp-buffer
+    (unless (zerop (call-process-shell-command command nil t))
+      (message (buffer-string))
+      (error "Error executing `%s`." command))
+    (when DEBUG (message (buffer-string)))
+    (buffer-string)))
+
 ;; ----
 
 (defvar command (pop command-line-args-left))
@@ -151,12 +163,21 @@
          (error "Context %s is already active." context-name))
        (unless (context-exists-p context-name)
          (error "Context %s does not exist." context-name))
-       (let ((from-prefix (context-prefix active-context))
-             (to-prefix (context-prefix context-name)))
-         (rename-ref! "HEAD" (concat from-prefix "HEAD"))
+       (let* ((from-prefix (context-prefix active-context))
+              (to-prefix (context-prefix context-name))
+              (to-head (parse-symbolic-ref (concat to-prefix "HEAD")))
+              (detached-p (cdr to-head))
+              (to-head (concat (if detached-p "" to-prefix) (car to-head)))
+              (command1 (concat "git rev-parse " to-head))
+              (to-head (car (split-string (shell-command-to-string-noerror command1) "\n")))
+              (command2 (concat "git checkout --detach " to-head)))
+         (rename-ref! "HEAD" "HEAD_tmp" t)
+         (shell-command-to-string-noerror command2)
+         (rename-ref! "HEAD_tmp" (concat from-prefix "HEAD"))
          (rename-ref! "refs/heads" (concat from-prefix "heads"))
          (when (file-exists-p "./.git/refs/stash")
            (rename-ref! "refs/stash" (concat from-prefix "stash")))
+         (rename-ref! "HEAD")
          (rename-ref! (concat to-prefix "HEAD") "HEAD")
          (rename-ref! (concat to-prefix "heads") "refs/heads")
          (when (file-exists-p (concat ".git/" to-prefix "stash"))
