@@ -165,9 +165,12 @@ error."
   (message "Context %s deleted." context-name))
 
 (defun command/show (context-name)
-  (let* ((prefix (context-prefix context-name))
+  (let* ((active-p (context-active-p context-name))
+         (prefix (if active-p "refs/" (context-prefix context-name)))
          (dir (concat "./.git/" prefix "heads/"))
          (files (directory-files dir)))
+    (unless files
+      (error "Context %s not found." context-name))
     (dolist (file files)
       (when (and (file-regular-p (concat dir file)) (not (string-match "^\\\\.*$" file)))
         (message "%sheads/%s" prefix file)))))
