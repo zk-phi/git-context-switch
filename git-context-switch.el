@@ -39,9 +39,13 @@
     (when DEBUG (message "DEBUG: Creating directory %s." dir))
     (make-directory dir t)))
 
-(defun trash-directory-recursively! (dir)
-  (when DEBUG (message "DEBUG: Deleting directory %s." dir))
-  (delete-directory dir t t))
+(defun trash-file-or-directory! (file)
+  (cond ((file-directory-p file)
+         (when DEBUG (message "DEBUG: Deleting directory %s." file))
+         (delete-directory file t t))
+        (t
+         (when DEBUG (message "DEBUG: Deleting file %s." file))
+         (delete-file file t))))
 
 (defun write-file-silently! (file)
   (write-region (point-min) (point-max) file nil (unless DEBUG 'nomsg)))
@@ -130,8 +134,8 @@
          (error "Cannot delete active context %s." context-name))
        (unless (context-exists-p context-name)
          (error "Context %s does not exist." context-name))
-       (trash-directory-recursively! (concat "./.git/" (context-prefix context-name)))
-       (trash-directory-recursively! (concat "./.git/logs/" (context-prefix context-name)))
+       (trash-file-or-directory! (concat "./.git/" (context-prefix context-name)))
+       (trash-file-or-directory! (concat "./.git/logs/" (context-prefix context-name)))
        (message "Context %s deleted." context-name))
       ((string= command "switch")
        (when (context-active-p context-name)
@@ -148,8 +152,8 @@
          (rename-ref! (concat to-prefix "heads") "refs/heads")
          (when (file-exists-p (concat ".git/" to-prefix "stash"))
            (rename-ref! (concat to-prefix "stash") "refs/stash"))
-         (trash-directory-recursively! (concat "./.git/" to-prefix))
-         (trash-directory-recursively! (concat "./.git/logs/" to-prefix)))
+         (trash-file-or-directory! (concat "./.git/" to-prefix))
+         (trash-file-or-directory! (concat "./.git/logs/" to-prefix)))
        (setq active-context context-name)
        (message "Context switched to %s." context-name))
       (t
