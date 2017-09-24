@@ -75,13 +75,17 @@
     (when (file-exists-p from-ref)
       (setq found t)
       (cond ((null to)
-             (trash-file-or-directory! from-ref)
+             (trash-file-or-directory! from-ref))
+            ((not copy)
+             (rename-file! from-ref to-ref))
+            (t
+             (copy-file-or-directory! from-ref to-ref))))
+    (when (file-exists-p from-log)
+      (cond ((null to)
              (trash-file-or-directory! from-log))
             ((not copy)
-             (rename-file! from-ref to-ref)
              (rename-file! from-log to-log))
             (t
-             (copy-file-or-directory! from-ref to-ref)
              (copy-file-or-directory! from-log to-log))))
     (when (file-exists-p "./.git/packed-refs")
       (with-temp-buffer
