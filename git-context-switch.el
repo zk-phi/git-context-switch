@@ -146,6 +146,9 @@ error."
     (insert new-active-context)
     (write-file-silently! "./.git/context")))
 
+(defun head (string)
+  (car (split-string string "\n")))
+
 ;; ---- command implementations
 
 (defun command/list ()
@@ -197,8 +200,7 @@ error."
   (let* ((active-prefix (context-prefix active-context))
          (to-prefix (context-prefix context-name))
          ;; `rev-parse' to find raw commit SHA1 of the symbolic ref
-         (command1 (concat "git rev-parse " to-prefix "HEAD"))
-         (to-head (car (split-string (shell-command-to-string-noerror command1) "\n")))
+         (to-head (head (shell-command-to-string-noerror (concat "git rev-parse " to-prefix "HEAD"))))
          (command2 (concat "git checkout --detach " to-head)))
     (rename-ref! "HEAD" "HEAD_tmp" t)
     (shell-command-to-string-noerror command2)
