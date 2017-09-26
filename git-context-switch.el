@@ -116,6 +116,17 @@
         (cons (match-string 1) nil)
       (cons (buffer-substring (point-at-bol) (point-at-eol)) t))))
 
+(defun update-symbolic-ref-context! (ref &optional to)
+  "Update symbolic ref REF to refer context TO. When TO is
+omitted or nil, REF will refer the active context."
+  (when DEBUG (message "Updating symbolic-ref %s." ref))
+  (with-temp-buffer
+    (let ((file (concat "./.git/" ref)))
+      (insert-file-contents file)
+      (when (search-forward-regexp "^ref: \\(refs/\\(?:contexts/[^/]+/\\)?\\)" nil t)
+        (replace-match (if to (context-prefix to) "refs/") t t nil 1))
+      (write-file-silently! file))))
+
 (defun shell-command-to-string-noerror (command)
   "Execute command COMMAND and returns the output as a string, if
 the command exits with 0. Otherwise dump the output and raises an
@@ -146,11 +157,13 @@ error."
 (defun command/create (context-name)
   (when (context-exists-p context-name)
     (error "Context %s already exists." context-name))
-  (let* ((context-prefix (context-prefix context-name))
-         (head-ref (parse-symbolic-ref "HEAD"))
+  (let* ((head-ref (parse-symbolic-ref "HEAD"))
          (detatched-p (cdr head-ref))
-         (head-ref (car head-ref)))
-    (rename-ref! "HEAD" (concat context-prefix "HEAD") t)
+         (head-ref (car head-ref))
+         (context-prefix (context-prefix context-name))
+         (newhead (concat context-prefix "HEAD")))
+    (rename-ref! "HEAD" newhead t)
+    (update-symbolic-ref-context! newhead context-name)
     (unless detatched-p
       (rename-ref! (concat "refs/" head-ref) (concat context-prefix head-ref) t)))
   (message "Context %s created." context-name))
@@ -182,20 +195,20 @@ error."
     (error "Context %s does not exist." context-name))
   (let* ((active-prefix (context-prefix active-context))
          (to-prefix (context-prefix context-name))
-         (to-head (parse-symbolic-ref (concat to-prefix "HEAD")))
-         (detached-p (cdr to-head))
-         (to-head (concat (if detached-p "" to-prefix) (car to-head)))
-         (command1 (concat "git rev-parse " to-head))
+         ;; `rev-parse' to find raw commit SHA1 of the symbolic ref
+         (command1 (concat "git rev-parse " to-prefix "HEAD"))
          (to-head (car (split-string (shell-command-to-string-noerror command1) "\n")))
          (command2 (concat "git checkout --detach " to-head)))
     (rename-ref! "HEAD" "HEAD_tmp" t)
     (shell-command-to-string-noerror command2)
+    (update-symbolic-ref-context! "HEAD_tmp" active-context)
     (rename-ref! "HEAD_tmp" (concat active-prefix "HEAD"))
     (rename-ref! "refs/heads" (concat active-prefix "heads"))
     (when (file-exists-p "./.git/refs/stash")
       (rename-ref! "refs/stash" (concat active-prefix "stash")))
     (rename-ref! "HEAD")
     (rename-ref! (concat to-prefix "HEAD") "HEAD")
+    (update-symbolic-ref-context! "HEAD")
     (rename-ref! (concat to-prefix "heads") "refs/heads")
     (when (file-exists-p (concat ".git/" to-prefix "stash"))
       (rename-ref! (concat to-prefix "stash") "refs/stash"))
