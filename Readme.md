@@ -1,6 +1,8 @@
 # git-context-switch
 
-Context switching for git.
+*git-context-switch is a context switch for git*
+
+git-context-switch makes git able to manage multiple branch-lists and stash-lits (called "context").
 
 ## Demo
 
@@ -35,5 +37,11 @@ git-context-switch have following subcommands:
 * `git context create <name>` ... Create new context.
 * `git context delete <name>` ... Delete context.
 * `git context switch <name>` ... Switch to context.
+* `git context show <name>` ... Show list of branches.
+* `git context mv <branch> <context>` ... Move branch to context.
+* `git context cp <branch> <context>` ... Copy branch to context.
 
-You may have branch and stash list for each contexts.
+`mv` and `cp` commands accept following arguments in addition:
+
+* `mv foo-context:foo-branch bar-context` ... Specify context to move (copy) branch from
+* `mv foo-branch bar-context:foofoo-branch` ... Specify branch name to move (copy) to
