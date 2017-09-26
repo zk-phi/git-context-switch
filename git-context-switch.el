@@ -23,10 +23,11 @@
 
 ;; ---- utilities
 
-(defun context-prefix (name)
-  (unless (string= name (convert-standard-filename name))
-    (error "Invalid context name %s." name))
-  (concat "refs/contexts/" name "/"))
+(defun context-prefix (&optional name)
+  (if (null name) "refs/"
+    (unless (string= name (convert-standard-filename name))
+      (error "Invalid context name %s." name))
+    (concat "refs/contexts/" name "/")))
 
 (defun context-exists-p (name)
   (member name all-contexts))
@@ -124,7 +125,7 @@ omitted or nil, REF will refer the active context."
     (let ((file (concat "./.git/" ref)))
       (insert-file-contents file)
       (when (search-forward-regexp "^ref: \\(refs/\\(?:contexts/[^/]+/\\)?\\)" nil t)
-        (replace-match (if to (context-prefix to) "refs/") t t nil 1))
+        (replace-match (context-prefix to) t t nil 1))
       (write-file-silently! file))))
 
 (defun shell-command-to-string-noerror (command)
@@ -179,7 +180,7 @@ error."
 
 (defun command/show (context-name)
   (let* ((active-p (context-active-p context-name))
-         (prefix (if active-p "refs/" (context-prefix context-name)))
+         (prefix (context-prefix (and (not active-p) context-name)))
          (dir (concat "./.git/" prefix "heads/"))
          (files (directory-files dir)))
     (unless files
