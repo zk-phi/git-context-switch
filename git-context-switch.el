@@ -192,7 +192,7 @@ error."
       (when (and (file-regular-p (concat dir file)) (not (string-match "^\\\\.*$" file)))
         (message "%sheads/%s" prefix file)))))
 
-(defun command/mv (from to &optional copy)
+(defun -mv/cp-internal (from to &optional copy)
   (let* ((from (split-string from ":"))
          (from-context (if (cdr from) (pop from) active-context))
          (from-branch (pop from))
@@ -210,6 +210,14 @@ error."
       (when (and (not copy) (string= from-ref current-head))
         (error "Branch %s is checked out." from-branch)))
     (rename-ref! from-ref to-ref copy)))
+
+(defun command/mv (from to)
+  (-mv/cp-internal from to)
+  (message "Branch %s moved."))
+
+(defun command/cp (from to)
+  (-mv/cp-internal from to)
+  (message "Branch %s copied."))
 
 (defun command/switch (context-name)
   (when (context-active-p context-name)
@@ -242,21 +250,14 @@ error."
 ;; ---- entrypoint
 
 (let ((command (pop command-line-args-left)))
-  (cond ((null command)
-         (command/list))
-        ((string= command "list")
-         (command/list))
-        ((string= command "create")
-         (command/create (pop command-line-args-left)))
-        ((string= command "delete")
-         (command/delete (pop command-line-args-left)))
-        ((string= command "show")
-         (command/show (pop command-line-args-left)))
-        ((string= command "switch")
-         (command/switch (pop command-line-args-left)))
-        ((string= command "mv")
-         (command/mv (pop command-line-args-left) (pop command-line-args-left)))
-        ((string= command "cp")
-         (command/mv (pop command-line-args-left) (pop command-line-args-left) t))
-        (t
-         (error "Command %s not found." command))))
+  (apply
+   (cond ((null command)             'command/list)
+         ((string= command "list")   'command/list)
+         ((string= command "create") 'command/create)
+         ((string= command "delete") 'command/delete)
+         ((string= command "show")   'command/show)
+         ((string= command "switch") 'command/switch)
+         ((string= command "mv")     'command/mv)
+         ((string= command "cp")     'command/cp)
+         (t (error "Command %s not found." command)))
+   command-line-args-left))
