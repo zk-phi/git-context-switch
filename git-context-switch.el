@@ -184,7 +184,7 @@ error."
          (dir (concat "./.git/" prefix "heads/"))
          (files (directory-files dir)))
     (unless files
-      (error "Context %s not found." context-name))
+      (error "Context %s does not exist." context-name))
     (dolist (file files)
       (when (and (file-regular-p (concat dir file)) (not (string-match "^\\\\.*$" file)))
         (message "%sheads/%s" prefix file)))))
