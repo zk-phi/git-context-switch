@@ -213,11 +213,11 @@ error."
 
 (defun command/mv (from to)
   (-mv/cp-internal from to)
-  (message "Branch %s moved."))
+  (message "Branch %s moved." from))
 
 (defun command/cp (from to)
   (-mv/cp-internal from to)
-  (message "Branch %s copied."))
+  (message "Branch %s copied." from))
 
 (defun command/switch (context-name)
   (when (context-active-p context-name)
