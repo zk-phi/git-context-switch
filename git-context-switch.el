@@ -92,6 +92,8 @@
       (with-temp-buffer
         (insert-file-contents "./.git/packed-refs")
         (set-buffer-file-coding-system 'utf-8-unix)
+        (when (search-forward-regexp "sorted " nil t)
+          (replace-match ""))
         (let ((regex (concat "^\\([0-9a-f]* \\)" (regexp-quote from) "\\(.*\\)\n")))
           (while (search-forward-regexp regex nil t)
             (let ((oldstr (match-string 0))
